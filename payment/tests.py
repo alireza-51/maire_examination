@@ -4,7 +4,7 @@ from django.test import TestCase
 from .models import Income, DailyIncome, WeeklySalary
 from courier.models import Courier
 
-from payment.celery import update_weekly_salary
+from payment.tasks import update_weekly_salary
 
 
 def today() -> date:
@@ -12,6 +12,7 @@ def today() -> date:
 
 class IncomeTest(TestCase):
     def setUp(self) -> None:
+        update_weekly_salary() # in empty database should handle well
         self.courier = Courier.objects.create(first_name='test', last_name='test')
         return super().setUp()
 

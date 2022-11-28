@@ -6,6 +6,8 @@ from payment.models import WeeklySalary, DailyIncome
 from courier.models import Courier
 from celery.utils.log import get_task_logger
 from celery import shared_task
+from celery.schedules import crontab
+from celery.task import periodic_task
 
 logger = get_task_logger(__name__)
 
@@ -29,7 +31,12 @@ def update_weekly_salary() -> None:
     if last_week_date.exists():
         last_week_date = last_week_date[0].date_of_week + datetime.timedelta(days=7)
     else:
-        last_week_date= DailyIncome.objects.all().order_by('date')[0].date
+        qs = DailyIncome.objects.all()
+        if not qs.exists():
+            logger.exception('{} - No entry in daily incomes, cannot update '\
+                'weekly salary out of nothing.'.format(datetime.datetime.now()))
+            return
+        last_week_date = qs.order_by('date')[0].date
 
     couriers = Courier.objects.all()
     for courier in couriers:
