@@ -36,3 +36,9 @@ class DailyIncome(models.Model):
 
     def __str__(self) -> str:
         return '{} {}'.format(self.courier, self.amount)
+
+
+class WeeklySalary(models.Model):
+    courier = models.ForeignKey(Courier, null=False, blank=False, on_delete=models.CASCADE, related_name='salary')
+    date_of_week = models.DateField(null=False, blank=False)
+    salary = models.IntegerField(default=0)
