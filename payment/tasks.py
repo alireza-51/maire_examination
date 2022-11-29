@@ -13,23 +13,21 @@ logger = get_task_logger(__name__)
 
 import datetime
 
-# def first_day_of_week(date):
-#     '''
-#     returns first day of week (Saturday) from given date
-#     '''
-#     td = (date.weekday() + 2) % 7
-#     first_day_of_week = date + datetime.timedelta(days = -td)
-#     if date == first_day_of_week:
-#         return first_day_of_week
-#     else:
-#         return first_day_of_week + datetime.timedelta(days=7)
+def first_day_of_week(date):
+    '''
+    returns first day of week (Saturday) from given date
+    '''
+    td = (date.weekday() + 2) % 7
+    first_day_of_week = date + datetime.timedelta(days = -td)
+    return first_day_of_week
+
 
 @shared_task
 def update_weekly_salary() -> None:
     last_week_date = WeeklySalary.objects.all().order_by('-date_of_week')
     
     if last_week_date.exists():
-        last_week_date = last_week_date[0].date_of_week + datetime.timedelta(days=7)
+        last_week_date = last_week_date[0].date_of_week + datetime.timedelta(days=+7)
     else:
         qs = DailyIncome.objects.all()
         if not qs.exists():
@@ -38,12 +36,23 @@ def update_weekly_salary() -> None:
             return
         last_week_date = qs.order_by('date')[0].date
 
+    last_updated_date = first_day_of_week(last_week_date)
+    today = datetime.date.today()
+
     couriers = Courier.objects.all()
     for courier in couriers:
-        query_set = courier.daily_income.filter(date__gte=last_week_date).annotate(
-            week=Trunc('date', 'week')).values('week').annotate(salary=Sum('amount'))
-        for week in query_set:
-            try:
-                WeeklySalary.objects.create(courier=courier, date_of_week=week['week'], salary=week['salary'])
-            except:
-                logger.exception(sys.exc_info()[1])
+        start_of_week = last_updated_date
+        while start_of_week < today:
+            print(courier.daily_income.filter(
+                date__gte=start_of_week, date__lte=start_of_week + datetime.timedelta(days=6)))
+            qs = courier.daily_income.filter(
+                date__gte=start_of_week, date__lte=start_of_week + datetime.timedelta(days=6)).aggregate(Sum('amount'))
+            if qs['amount__sum'] is not None:
+                try:
+                    WeeklySalary.objects.create(
+                        courier=courier, date_of_week=start_of_week, salary=qs['amount__sum'])
+                    print('saved!')
+                except:
+                    logger.exception(sys.exc_info()[1])
+
+            start_of_week += datetime.timedelta(7)

@@ -8,7 +8,7 @@ from payment.tasks import update_weekly_salary
 
 
 def today() -> date:
-    return date(year=2022, month=11, day=28)
+    return date(year=2022, month=11, day=5) # Saturday
 
 class IncomeTest(TestCase):
     def setUp(self) -> None:
@@ -54,6 +54,8 @@ class SalaryTest(TestCase):
         self.assertEqual(len(courier2_salary), 1)
         self.assertEqual(courier1_salary[0].salary, 1500)
         self.assertEqual(courier2_salary[0].salary, 1000)
+        courier1_salary.delete() # updater task looks for last saturday to continue on update.
+        courier2_salary.delete()
     
     def weekly_salary_weeks(self):
         '''
@@ -66,6 +68,7 @@ class SalaryTest(TestCase):
         update_weekly_salary()
         courier1_salary = WeeklySalary.objects.filter(courier=self.courier1)
         courier2_salary = WeeklySalary.objects.filter(courier=self.courier2)
+        
         self.assertEqual(courier1_salary[0].salary, 1500)
         self.assertEqual(courier1_salary[1].salary, 500)
         self.assertEqual(courier1_salary[2].salary, 500)
@@ -75,8 +78,6 @@ class SalaryTest(TestCase):
         self.assertEqual(courier2_salary[2].salary, 500)
 
     def test_orderly(self):
-        '''
-        Because of calcultaions it is important to run in specific order.
-        '''
+        # Because of calculations it is important to run in specific order.
         self.weekly_salary_summation()
         self.weekly_salary_weeks()
