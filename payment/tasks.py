@@ -6,7 +6,7 @@ from payment.models import WeeklySalary, DailyIncome
 from courier.models import Courier
 from celery.utils.log import get_task_logger
 from celery import shared_task
-from celery.schedules import crontab
+from django.db import transaction
 from celery.task import periodic_task
 
 logger = get_task_logger(__name__)
@@ -40,19 +40,15 @@ def update_weekly_salary() -> None:
     today = datetime.date.today()
 
     couriers = Courier.objects.all()
-    for courier in couriers:
-        start_of_week = last_updated_date
-        while start_of_week < today:
-            print(courier.daily_income.filter(
-                date__gte=start_of_week, date__lte=start_of_week + datetime.timedelta(days=6)))
-            qs = courier.daily_income.filter(
-                date__gte=start_of_week, date__lte=start_of_week + datetime.timedelta(days=6)).aggregate(Sum('amount'))
-            if qs['amount__sum'] is not None:
-                try:
+    with transaction.atomic():
+        for courier in couriers:
+            start_of_week = last_updated_date
+            while start_of_week < today:
+                qs = courier.daily_income.filter(
+                    date__gte=start_of_week, date__lte=start_of_week + datetime.timedelta(days=6)).aggregate(Sum('amount'))
+                if qs['amount__sum'] is not None:
                     WeeklySalary.objects.create(
                         courier=courier, date_of_week=start_of_week, salary=qs['amount__sum'])
-                    print('saved!')
-                except:
-                    logger.exception(sys.exc_info()[1])
+                    # print('saved!')
 
-            start_of_week += datetime.timedelta(7)
+                start_of_week += datetime.timedelta(7)

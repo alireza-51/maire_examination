@@ -1,6 +1,6 @@
 import sys
 from django.utils.translation import gettext_lazy as _
-from django.db import models
+from django.db import models, transaction
 
 from courier.models import Courier
 
@@ -17,16 +17,13 @@ class Income(models.Model):
 
     def save(self, *args, **kwargs) -> None:
         super().save(*args, **kwargs)
-        try:
-            daily_income = DailyIncome.objects.get(courier=self.courier, date=self.date)
-            daily_income.amount += self.amount
-            daily_income.save()
-        except DailyIncome.DoesNotExist:
-            daily_income = DailyIncome.objects.create(courier=self.courier, amount=self.amount, date=self.date)
-        except:
-            self.delete()
-            raise sys.exc_info()[0](sys.exc_info()[1])
-
+        with transaction.atomic():
+            try:
+                daily_income = DailyIncome.objects.get(courier=self.courier, date=self.date)
+                daily_income.amount += self.amount
+                daily_income.save()
+            except DailyIncome.DoesNotExist:
+                daily_income = DailyIncome.objects.create(courier=self.courier, amount=self.amount, date=self.date)
 
 
 class DailyIncome(models.Model):

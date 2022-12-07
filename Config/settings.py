@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     # Third-party apps
     'rest_framework',
     'django_filters',
+    'debug_toolbar',
     
     # Apps
     'courier',
@@ -49,6 +50,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'debug_toolbar.middleware.DebugToolbarMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -145,6 +147,7 @@ CELERY_IMPORTS = [
     'payment.tasks',
 ]
 
+# Celery settings
 CELERY_BEAT_SCHEDULE = {
     'task-number-one': {
         'task': 'payment.tasks.update_weekly_salary',
@@ -152,3 +155,10 @@ CELERY_BEAT_SCHEDULE = {
         # 'schedule': crontab(minute='*/1')
     }
 }
+
+# For Django debug toolbar porpuse
+INTERNAL_IPS = [
+    '0.0.0.0',
+    "127.0.0.1",
+    # ...
+]

@@ -3,6 +3,7 @@ from django_filters import FilterSet,DateFilter
 from django_filters.rest_framework import DjangoFilterBackend
 from .serializers import WeeklySerializer
 from payment.models import WeeklySalary
+from payment.tasks import update_weekly_salary
 
 
 class WeeklySalaryView(mixins.ListModelMixin, viewsets.GenericViewSet):
@@ -17,4 +18,12 @@ class WeeklySalaryView(mixins.ListModelMixin, viewsets.GenericViewSet):
             qs = qs.filter(date_of_week__gte=from_date)
         if to_date:
             qs = qs.filter(date_of_week__lte=to_date)
-        return qs
+        return qs.select_related('courier')
+
+class CalculateSalary(viewsets.GenericViewSet, mixins.ListModelMixin):
+    serializer_class = WeeklySerializer
+
+    def get_queryset(self):
+        update_weekly_salary()
+        return WeeklySalary.objects.all().select_related('courier')
+        
