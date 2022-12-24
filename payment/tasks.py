@@ -40,15 +40,30 @@ def update_weekly_salary() -> None:
     today = datetime.date.today()
 
     couriers = Courier.objects.all()
-    with transaction.atomic():
-        for courier in couriers:
-            start_of_week = last_updated_date
-            while start_of_week < today:
-                qs = courier.daily_income.filter(
-                    date__gte=start_of_week, date__lte=start_of_week + datetime.timedelta(days=6)).aggregate(Sum('amount'))
-                if qs['amount__sum'] is not None:
-                    WeeklySalary.objects.create(
-                        courier=courier, date_of_week=start_of_week, salary=qs['amount__sum'])
-                    # print('saved!')
+    # with transaction.atomic():
+    #     for courier in couriers:
+    #         start_of_week = last_updated_date
+    #         while start_of_week < today:
+    #             qs = courier.daily_income.filter(
+    #                 date__gte=start_of_week, date__lte=start_of_week + datetime.timedelta(days=6)).aggregate(Sum('amount'))
+    #             if qs['amount__sum'] is not None:
+    #                 WeeklySalary.objects.create(
+    #                     courier=courier, date_of_week=start_of_week, salary=qs['amount__sum'])
+    #                 # print('saved!')
 
-                start_of_week += datetime.timedelta(7)
+    #             start_of_week += datetime.timedelta(7)
+    start_of_week = last_updated_date
+    while start_of_week < today:
+        try:
+            with transaction.atomic(): # atomicity enables in every week so workload gets better on DB
+                for courier in couriers:
+                    qs = courier.daily_income.filter(
+                        date__gte=start_of_week, date__lte=start_of_week + datetime.timedelta(days=6)).aggregate(Sum('amount'))
+                    if qs['amount__sum'] is not None:
+                        WeeklySalary.objects.create(
+                            courier=courier, date_of_week=start_of_week, salary=qs['amount__sum'])
+                
+            start_of_week += datetime.timedelta(7)
+
+        except:
+            break
