@@ -16,8 +16,8 @@ class Income(models.Model):
         return '{} {}'.format(self.courier, self.amount)
 
     def save(self, *args, **kwargs) -> None:
-        super().save(*args, **kwargs)
         with transaction.atomic():
+            super().save(*args, **kwargs)
             try:
                 daily_income = DailyIncome.objects.get(courier=self.courier, date=self.date)
                 daily_income.amount += self.amount
